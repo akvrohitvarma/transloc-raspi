@@ -10,17 +10,17 @@ A privacy-first, ad-free bus tracking kiosk for **Raspberry Pi** with an 800x480
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Raspberry Pi                          │
-│                                                          │
+│                    Raspberry Pi                         │
+│                                                         │
 │  ┌──────────────┐     ┌──────────────────────────────┐  │
-│  │  Flask        │     │  Pygame Display              │  │
-│  │  Python       │◄────│  800×480 framebuffer         │  │
-│  │  Port 3000    │     │  2×2 bus card grid           │  │
+│  │  Flask       │     │  Pygame Display              │  │
+│  │  Python      │◄────│  800×480 framebuffer         │  │
+│  │  Port 3000   │     │  2×2 bus card grid           │  │
 │  └──────┬───────┘     └──────────────────────────────┘  │
-│         │                                                │
-│         ├──► TransLoc API (bus data)                     │
-│         ├──► Open-Meteo API (weather)                    │
-│         └──► config.json (saved buses)                   │
+│         │                                               │
+│         ├──► TransLoc API (bus data)                    │
+│         ├──► Open-Meteo API (weather)                   │
+│         └──► config.json (saved buses)                  │
 └─────────────────────────────────────────────────────────┘
 
   Your phone/laptop ──► http://pi-ip:3000/settings
