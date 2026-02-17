@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TransLoc Kiosk Settings</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>TransLoc Kiosk Settings</h1>
+      <p class="subtitle">Configure which buses to track on your kiosk display</p>
+    </header>
+
+    <section class="card add-section">
+      <h2>Add a Bus to Track</h2>
+
+      <div class="form-group">
+        <label for="agency-search">1. Search Agency</label>
+        <input type="text" id="agency-search" placeholder="Search agencies..." autocomplete="off">
+        <div id="agency-dropdown" class="dropdown hidden"></div>
+        <input type="hidden" id="agency-id">
+        <span id="agency-selected" class="selected-label"></span>
+      </div>
+
+      <div class="form-group" id="route-group" style="display:none">
+        <label for="route-select">2. Select Route</label>
+        <select id="route-select">
+          <option value="">Loading routes...</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="stop-group" style="display:none">
+        <label for="stop-select">3. Select Stop</label>
+        <select id="stop-select">
+          <option value="">Select a stop...</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="customize-group" style="display:none">
+        <label>4. Customize</label>
+        <div class="customize-row">
+          <div>
+            <label for="bus-color" class="sub-label">Card Color</label>
+            <input type="color" id="bus-color" value="#4A90D9">
+          </div>
+          <div class="desc-field">
+            <label for="bus-desc" class="sub-label">Description (optional)</label>
+            <input type="text" id="bus-desc" placeholder="e.g. Morning commute" maxlength="40">
+          </div>
+        </div>
+      </div>
+
+      <button id="add-btn" class="btn btn-primary" disabled>Add Bus</button>
+    </section>
+
+    <section class="card tracked-section">
+      <h2>Tracked Buses <span id="bus-count" class="badge">0</span></h2>
+      <p class="hint">Drag to reorder. The kiosk shows the first 4 buses.</p>
+      <div id="bus-list" class="bus-list"></div>
+      <div id="empty-state" class="empty-state">No buses tracked yet. Add one above!</div>
+    </section>
+
+    <button id="save-btn" class="btn btn-save">Save Configuration</button>
+    <div id="toast" class="toast hidden">Saved!</div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+
+</html>
