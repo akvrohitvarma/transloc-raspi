@@ -307,7 +307,7 @@ class KioskDisplay:
 
         if self.weather:
             temp_raw = self.weather.get('temperature_2m')
-            temp = (temp_raw + 2) if temp_raw is not None else None
+            temp = (temp_raw) if temp_raw is not None else None
             temp_str = f'{temp:.0f}\u00b0C' if temp is not None else '--\u00b0C'
             weather_surf = self.font_md.render(temp_str, True, HEADER_TEXT)
             self.screen.blit(weather_surf, (WIDTH // 2 - weather_surf.get_width() // 2,
