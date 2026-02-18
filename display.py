@@ -151,8 +151,8 @@ class KioskDisplay:
                 self.font_sm = pygame.font.Font(font_path, 14)
                 self.font_sm_bold = pygame.font.Font(font_path, 24)
                 self.font_xs = pygame.font.Font(font_path, 12)
-                self.font_xl = pygame.font.Font(font_path, 42)
-                self.font_route = pygame.font.Font(font_path, 36)
+                self.font_xl = pygame.font.Font(font_path, 36)
+                self.font_route = pygame.font.Font(font_path, 32)
             else:
                 self.font_lg = pygame.font.SysFont('sans-serif', 22)
                 self.font_lg_bold = pygame.font.SysFont('sans-serif', 22, bold=True)
@@ -160,8 +160,8 @@ class KioskDisplay:
                 self.font_sm = pygame.font.SysFont('sans-serif', 14)
                 self.font_sm_bold = pygame.font.SysFont('sans-serif', 14, bold=True)
                 self.font_xs = pygame.font.SysFont('sans-serif', 12)
-                self.font_xl = pygame.font.SysFont('sans-serif', 42)
-                self.font_route = pygame.font.SysFont('sans-serif', 36, bold=True)
+                self.font_xl = pygame.font.SysFont('sans-serif', 36)
+                self.font_route = pygame.font.SysFont('sans-serif', 32, bold=True)
         except Exception:
             self.font_lg = pygame.font.SysFont(None, 24)
             self.font_lg_bold = pygame.font.SysFont(None, 24, bold=True)
@@ -169,8 +169,8 @@ class KioskDisplay:
             self.font_sm = pygame.font.SysFont(None, 15)
             self.font_sm_bold = pygame.font.SysFont(None, 15, bold=True)
             self.font_xs = pygame.font.SysFont(None, 13)
-            self.font_xl = pygame.font.SysFont(None, 38)
-            self.font_route = pygame.font.SysFont(None, 28, bold=True)
+            self.font_xl = pygame.font.SysFont(None, 36)
+            self.font_route = pygame.font.SysFont(None, 32, bold=True)
 
         self.config = {'buses': []}
         self.bus_data = []
@@ -272,7 +272,8 @@ class KioskDisplay:
                 self.bus_data = bus_results
 
                 now = time.time()
-                if now - self.last_weather_refresh > WEATHER_INTERVAL:
+                weather_interval = WEATHER_INTERVAL if self.weather else 30
+                if now - self.last_weather_refresh > weather_interval:
                     buses = self.config.get('buses', [])
                     if buses:
                         lat = buses[0].get('agencyLat')
@@ -281,7 +282,7 @@ class KioskDisplay:
                             w = self.fetch_json(f'/api/weather?lat={lat}&lon={lon}')
                             if w and 'current' in w:
                                 self.weather = w['current']
-                    self.last_weather_refresh = now
+                                self.last_weather_refresh = now
 
                 self.last_refresh = time.time()
                 self.last_update_text = 'Just now'
