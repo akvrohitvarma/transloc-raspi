@@ -117,9 +117,12 @@ class KioskDisplay:
     def __init__(self):
         pygame.init()
 
-        if os.environ.get('DISPLAY') or sys.platform == 'darwin':
+        if sys.platform == 'darwin':
             self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
             pygame.display.set_caption('TransLoc Kiosk')
+        elif os.environ.get('DISPLAY'):
+            self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
+            pygame.mouse.set_visible(False)
         else:
             os.environ['SDL_FBDEV'] = '/dev/fb0'
             pygame.display.init()
