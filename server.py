@@ -6,8 +6,11 @@ Flask backend that proxies TransLoc and Open-Meteo APIs,
 manages kiosk configuration, and serves the settings page.
 """
 
+import hmac
 import json
 import os
+import secrets
+import threading
 import time
 import requests
 from flask import Flask, request, jsonify, send_from_directory
@@ -22,7 +25,17 @@ MAX_CONFIG_SIZE = 10240
 
 _cache = {}
 CACHE_TTL = 10
-WEATHER_CACHE_TTL = 3600
+WEATHER_CACHE_TTL = 1800
+
+# Saving settings requires a PIN that only the kiosk screen shows, so only
+# someone who can see the screen can change the configuration. A new PIN is
+# generated each time the server starts.
+KIOSK_PIN = f'{secrets.randbelow(10000):04d}'
+MAX_PIN_ATTEMPTS = 5
+PIN_LOCKOUT_SECS = 60
+_pin_lock = threading.Lock()
+_pin_failures = 0
+_pin_locked_until = 0
 
 
 def get_cached(key, ttl=CACHE_TTL):
@@ -145,7 +158,8 @@ def get_weather():
 
         weather_url = (
             f'{WEATHER_BASE}?latitude={lat}&longitude={lon}'
-            f'&current=temperature_2m'
+            f'&current=temperature_2m,precipitation'
+            f'&hourly=precipitation_probability&forecast_hours=3'
             f'&temperature_unit=celsius'
         )
         w_res = requests.get(weather_url, timeout=5)
@@ -178,9 +192,41 @@ def get_config():
     return jsonify(read_config())
 
 
+def is_local_request():
+    return request.remote_addr in ('127.0.0.1', '::1')
+
+
+@app.route('/api/pin')
+def get_pin():
+    """Give the PIN to the kiosk display only (it runs on the same machine)."""
+    if not is_local_request():
+        return jsonify({'error': 'Forbidden'}), 403
+    return jsonify({'pin': KIOSK_PIN})
+
+
+def check_pin():
+    """Return None if the request carries the right PIN, else an error response."""
+    global _pin_failures, _pin_locked_until
+    with _pin_lock:
+        if time.time() < _pin_locked_until:
+            return jsonify({'error': 'Too many wrong PINs. Try again in a minute.'}), 429
+        given = request.headers.get('X-Kiosk-PIN', '')
+        if hmac.compare_digest(given.encode(), KIOSK_PIN.encode()):
+            _pin_failures = 0
+            return None
+        _pin_failures += 1
+        if _pin_failures >= MAX_PIN_ATTEMPTS:
+            _pin_failures = 0
+            _pin_locked_until = time.time() + PIN_LOCKOUT_SECS
+        return jsonify({'error': 'Wrong PIN. Check the kiosk screen.'}), 401
+
+
 @app.route('/api/config', methods=['POST'])
 def save_config():
     try:
+        pin_error = check_pin()
+        if pin_error:
+            return pin_error
         if request.content_length and request.content_length > MAX_CONFIG_SIZE:
             return jsonify({'error': 'Config too large'}), 413
         config = request.get_json()
@@ -191,9 +237,13 @@ def save_config():
         clean_buses = []
         allowed_keys = {'agencyId', 'agencyName', 'agencyLat', 'agencyLon',
                         'routeId', 'routeName', 'stopId', 'stopName',
-                        'color', 'description'}
+                        'color', 'description', 'walkMin'}
         for bus in config['buses']:
-            clean_buses.append({k: v for k, v in bus.items() if k in allowed_keys})
+            clean = {k: v for k, v in bus.items() if k in allowed_keys}
+            walk = clean.pop('walkMin', None)
+            if isinstance(walk, int) and not isinstance(walk, bool) and 0 < walk <= 60:
+                clean['walkMin'] = walk
+            clean_buses.append(clean)
         write_config({'buses': clean_buses})
         return jsonify({'success': True})
     except Exception as e:
@@ -208,4 +258,5 @@ def settings_page():
 if __name__ == '__main__':
     print(f'TransLoc Kiosk Server running at http://0.0.0.0:{PORT}')
     print(f'Settings page: http://localhost:{PORT}/settings')
+    print(f'Settings PIN: {KIOSK_PIN} (also shown on the kiosk screen)')
     app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)

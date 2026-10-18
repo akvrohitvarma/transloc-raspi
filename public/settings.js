@@ -3,6 +3,13 @@ let selectedAgency = null;
 let routes = [];
 let stops = [];
 let config = { buses: [] };
+let editingIndex = null;
+
+// Walk time input -> whole minutes 1-60, or null when empty/invalid
+function parseWalk(value) {
+    const n = parseInt(value, 10);
+    return n >= 1 && n <= 60 ? n : null;
+}
 
 function escapeHtml(str) {
     if (str == null) return '';
@@ -25,6 +32,8 @@ const stopSelect = document.getElementById('stop-select');
 const customizeGroup = document.getElementById('customize-group');
 const busColor = document.getElementById('bus-color');
 const busDesc = document.getElementById('bus-desc');
+const busWalk = document.getElementById('bus-walk');
+const pinInput = document.getElementById('pin-input');
 const addBtn = document.getElementById('add-btn');
 const busList = document.getElementById('bus-list');
 const emptyState = document.getElementById('empty-state');
@@ -51,12 +60,14 @@ async function loadConfig() {
 async function loadAgencies() {
     try {
         const res = await fetch('/api/agencies');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         agencies = data.filter(a =>
-            a.is_public && a.products && a.products.includes('realtime')
+            a.is_public && a.products && a.products.includes('realtime') && a.long_name
         ).sort((a, b) => a.long_name.localeCompare(b.long_name));
     } catch (e) {
         agencies = [];
+        showToast('Could not load agencies from TransLoc');
     }
 }
 
@@ -66,12 +77,12 @@ function showAgencies(filter = '') {
         ? agencies.slice(0, 15)
         : agencies.filter(a =>
             a.long_name.toLowerCase().includes(q) ||
-            a.short_name.toLowerCase().includes(q)
+            (a.short_name || '').toLowerCase().includes(q)
         ).slice(0, 15);
 
     agencyDropdown.innerHTML = matches.map(a =>
         `<div class="dropdown-item" data-id="${escapeHtml(a.id)}" data-name="${escapeHtml(a.long_name)}"
-          data-lat="${escapeHtml(a.position.latitude)}" data-lon="${escapeHtml(a.position.longitude)}">
+          data-lat="${escapeHtml(a.position?.latitude)}" data-lon="${escapeHtml(a.position?.longitude)}">
       ${escapeHtml(a.long_name)}
     </div>`
     ).join('');
@@ -109,6 +120,7 @@ agencyDropdown.addEventListener('click', async (e) => {
 
     try {
         const res = await fetch(`/api/routes?agency=${selectedAgency.id}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         routes = (data.routes || []).filter(r => r.is_active);
         stops = data.stops || [];
@@ -197,6 +209,8 @@ addBtn.addEventListener('click', () => {
         color: busColor.value,
         description: busDesc.value.trim()
     };
+    const walk = parseWalk(busWalk.value);
+    if (walk) bus.walkMin = walk;
 
     config.buses.push(bus);
     renderBusList();
@@ -212,6 +226,7 @@ function resetForm() {
     customizeGroup.style.display = 'none';
     addBtn.disabled = true;
     busDesc.value = '';
+    busWalk.value = '';
     busColor.value = '#4A90D9';
 }
 
@@ -226,29 +241,82 @@ function renderBusList() {
         addBtn.textContent = 'Add Bus';
     }
 
-    busList.innerHTML = config.buses.map((bus, i) => `
-    <div class="bus-item" draggable="true" data-index="${i}">
-      <span class="grip-icon">\u283f</span>
-      <span class="bus-order">${i + 1}</span>
-      <span class="bus-color-dot" style="background:${escapeHtml(bus.color)}"></span>
-      <div class="bus-info">
-        <div class="bus-name">${escapeHtml(bus.routeName)}</div>
-        <div class="bus-detail">${escapeHtml(bus.stopName)} — ${escapeHtml(bus.agencyName)}</div>
-        ${bus.description ? `<div class="bus-desc-tag">${escapeHtml(bus.description)}</div>` : ''}
+    busList.innerHTML = config.buses.map((bus, i) => {
+        const editing = i === editingIndex;
+        const tags = [bus.description, bus.walkMin ? `${bus.walkMin} min walk` : '']
+            .filter(Boolean).map(escapeHtml).join(' · ');
+        return `
+    <div class="bus-item-wrap">
+      <div class="bus-item" draggable="${!editing}" data-index="${i}">
+        <span class="grip-icon">\u283f</span>
+        <span class="bus-order">${i + 1}</span>
+        <span class="bus-color-dot" style="background:${escapeHtml(bus.color)}"></span>
+        <div class="bus-info">
+          <div class="bus-name">${escapeHtml(bus.routeName)}</div>
+          <div class="bus-detail">${escapeHtml(bus.stopName)} — ${escapeHtml(bus.agencyName)}</div>
+          ${tags ? `<div class="bus-desc-tag">${tags}</div>` : ''}
+        </div>
+        ${editing ? '' : `<button class="btn btn-edit" data-index="${i}">Edit</button>`}
+        <button class="btn btn-delete" data-index="${i}">Remove</button>
       </div>
-      <button class="btn btn-delete" data-index="${i}">Remove</button>
-    </div>
-  `).join('');
+      ${editing ? `
+      <div class="edit-panel" data-index="${i}">
+        <div class="customize-row">
+          <div>
+            <label class="sub-label">Card Color</label>
+            <input type="color" data-field="color" value="${escapeHtml(bus.color)}">
+          </div>
+          <div class="desc-field">
+            <label class="sub-label">Description</label>
+            <input type="text" data-field="description" maxlength="40"
+              value="${escapeHtml(bus.description || '')}" placeholder="e.g. Morning commute">
+          </div>
+          <div class="walk-field">
+            <label class="sub-label">Walk (min)</label>
+            <input type="number" data-field="walkMin" min="1" max="60"
+              value="${bus.walkMin || ''}" placeholder="Optional">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-done">Done</button>
+      </div>` : ''}
+    </div>`;
+    }).join('');
 
     attachDragEvents();
 }
 
 busList.addEventListener('click', (e) => {
     const delBtn = e.target.closest('.btn-delete');
-    if (!delBtn) return;
-    const idx = parseInt(delBtn.dataset.index);
-    config.buses.splice(idx, 1);
-    renderBusList();
+    const editBtn = e.target.closest('.btn-edit');
+    if (delBtn) {
+        config.buses.splice(parseInt(delBtn.dataset.index), 1);
+        editingIndex = null;
+        renderBusList();
+    } else if (editBtn) {
+        editingIndex = parseInt(editBtn.dataset.index);
+        renderBusList();
+    } else if (e.target.closest('.btn-done')) {
+        editingIndex = null;
+        renderBusList();
+        showToast('Changed. Tap Save Configuration to apply.');
+    }
+});
+
+// Edits apply to the config as you type; the list re-renders on Done
+busList.addEventListener('input', (e) => {
+    const field = e.target.dataset.field;
+    const panel = e.target.closest('.edit-panel');
+    if (!field || !panel) return;
+    const bus = config.buses[parseInt(panel.dataset.index)];
+    if (field === 'walkMin') {
+        const walk = parseWalk(e.target.value);
+        if (walk) bus.walkMin = walk;
+        else delete bus.walkMin;
+    } else if (field === 'description') {
+        bus.description = e.target.value.trim();
+    } else {
+        bus[field] = e.target.value;
+    }
 });
 
 let dragIndex = null;
@@ -285,31 +353,50 @@ function attachDragEvents() {
 
             const [moved] = config.buses.splice(dragIndex, 1);
             config.buses.splice(dropIndex, 0, moved);
+            editingIndex = null;
             renderBusList();
         });
     });
 }
 
+// Remember a working PIN for this browser tab so it needn't be retyped
+try { pinInput.value = sessionStorage.getItem('kioskPin') || ''; } catch (e) { }
+
 saveBtn.addEventListener('click', async () => {
+    const pin = pinInput.value.trim();
+    if (!/^\d{4}$/.test(pin)) {
+        showToast('Enter the 4-digit PIN shown on the kiosk screen', true);
+        pinInput.focus();
+        return;
+    }
     try {
         const res = await fetch('/api/config', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-Kiosk-PIN': pin },
             body: JSON.stringify(config)
         });
         const data = await res.json();
         if (data.success) {
+            try { sessionStorage.setItem('kioskPin', pin); } catch (e) { }
             showToast('Configuration saved');
         } else {
-            showToast('Error: ' + (data.error || 'Unknown'));
+            if (res.status === 401) {
+                try { sessionStorage.removeItem('kioskPin'); } catch (e) { }
+                pinInput.focus();
+            }
+            showToast(data.error || 'Unknown error', true);
         }
     } catch (e) {
-        showToast('Network error saving config');
+        showToast('Network error saving config', true);
     }
 });
 
-function showToast(msg) {
+let toastTimer = null;
+
+function showToast(msg, isError = false) {
     toast.textContent = msg;
+    toast.classList.toggle('error', isError);
     toast.classList.remove('hidden');
-    setTimeout(() => toast.classList.add('hidden'), 2500);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.add('hidden'), 2500);
 }

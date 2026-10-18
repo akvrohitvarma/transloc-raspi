@@ -92,6 +92,7 @@ label {
 }
 
 input[type="text"],
+input[type="number"],
 select {
   width: 100%;
   padding: 10px 12px;
@@ -105,6 +106,7 @@ select {
 }
 
 input[type="text"]:focus,
+input[type="number"]:focus,
 select:focus {
   border-color: var(--accent);
 }
@@ -136,6 +138,51 @@ input[type="color"] {
 
 .desc-field {
   flex: 1;
+  min-width: 0;
+}
+
+.walk-field {
+  width: 96px;
+  flex-shrink: 0;
+}
+
+.walk-hint {
+  margin: 8px 0 0;
+}
+
+.pin-row {
+  margin-bottom: 12px;
+}
+
+.btn-edit {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  font-size: 0.8rem;
+}
+
+.btn-edit:hover {
+  border-color: var(--accent);
+}
+
+.bus-item-wrap {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.bus-item-wrap .bus-item {
+  border: none;
+  background: none;
+}
+
+.edit-panel {
+  padding: 0 12px 12px;
+}
+
+.edit-panel .btn-primary {
+  margin-top: 10px;
 }
 
 .selected-label {
@@ -339,6 +386,11 @@ input[type="color"] {
   font-size: 0.9rem;
   z-index: 200;
   transition: opacity 0.3s;
+}
+
+.toast.error {
+  background: var(--danger);
+  color: #fff;
 }
 
 .toast.hidden {

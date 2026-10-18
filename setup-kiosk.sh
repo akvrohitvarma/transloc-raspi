@@ -43,7 +43,7 @@ echo "[1/5] Updating packages..."
 apt-get update -qq
 
 echo "[2/5] Installing Python3 and dependencies..."
-apt-get install -y python3 python3-pip python3-pygame
+apt-get install -y python3 python3-pip python3-pygame fonts-dejavu-core
 pip3 install flask requests pygame 2>/dev/null || pip3 install --break-system-packages flask requests pygame 2>/dev/null || true
 
 echo "[3/5] Creating server service..."

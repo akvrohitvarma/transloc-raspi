@@ -51,7 +51,12 @@
             <label for="bus-desc" class="sub-label">Description (optional)</label>
             <input type="text" id="bus-desc" placeholder="e.g. Morning commute" maxlength="40">
           </div>
+          <div class="walk-field">
+            <label for="bus-walk" class="sub-label">Walk (min)</label>
+            <input type="number" id="bus-walk" min="1" max="60" placeholder="Optional">
+          </div>
         </div>
+        <p class="hint walk-hint">Walk time to the stop. If set, the kiosk shows when to leave instead of when the bus arrives.</p>
       </div>
 
       <button id="add-btn" class="btn btn-primary" disabled>Add Bus</button>
@@ -59,10 +64,16 @@
 
     <section class="card tracked-section">
       <h2>Tracked Buses <span id="bus-count" class="badge">0</span></h2>
-      <p class="hint">Drag to reorder. The kiosk shows the first 4 buses.</p>
+      <p class="hint">Drag to reorder. The kiosk layout adapts to how many buses you track; with 3, the first one gets the large card.</p>
       <div id="bus-list" class="bus-list"></div>
       <div id="empty-state" class="empty-state">No buses tracked yet. Add one above!</div>
     </section>
+
+    <div class="pin-row">
+      <label for="pin-input">Kiosk PIN</label>
+      <input type="text" id="pin-input" inputmode="numeric" maxlength="4" autocomplete="off"
+        placeholder="Shown at the bottom right of the kiosk screen">
+    </div>
 
     <button id="save-btn" class="btn btn-save">Save Configuration</button>
     <div id="toast" class="toast hidden">Saved!</div>

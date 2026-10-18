@@ -68,15 +68,26 @@ fi
 
 echo "[3/4] Removing pip packages installed by setup..."
 
-pip3 uninstall -y flask requests pygame 2>/dev/null || \
-pip3 uninstall --break-system-packages -y flask requests pygame 2>/dev/null || \
-echo "  Could not remove pip packages (may need manual cleanup)"
+# flask/requests/pygame are common packages other programs may rely on,
+# so only remove them if explicitly asked.
+read -p "  Also uninstall flask, requests and pygame system-wide? (y/N): " remove_pkgs
+if [ "$remove_pkgs" = "y" ] || [ "$remove_pkgs" = "Y" ]; then
+    pip3 uninstall -y flask requests pygame 2>/dev/null || \
+    pip3 uninstall --break-system-packages -y flask requests pygame 2>/dev/null || \
+    echo "  Could not remove pip packages (may need manual cleanup)"
+else
+    echo "  Kept pip packages (skipped)"
+fi
 
 echo "[4/4] Removing project directory..."
 
-if [ -d "$KIOSK_DIR" ]; then
+# Only delete the directory if it really is the kiosk project, so a copy of
+# this script run from somewhere else (e.g. your home folder) can't wipe it.
+if [ -f "$KIOSK_DIR/server.py" ] && [ -f "$KIOSK_DIR/display.py" ]; then
     rm -rf "$KIOSK_DIR"
     echo "  Removed $KIOSK_DIR"
+else
+    echo "  $KIOSK_DIR does not look like the kiosk project (skipped)"
 fi
 
 echo ""
